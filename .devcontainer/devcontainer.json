@@ -1,0 +1,36 @@
+{
+  "name": "LeaveSync Development",
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "app",
+  "workspaceFolder": "/workspace",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "ms-vscode.vscode-typescript-next",
+        "bradlc.vscode-tailwindcss"
+      ],
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash"
+      }
+    }
+  },
+  "postCreateCommand": "npm install && npm run seed:backend",
+  "postStartCommand": "npm run dev",
+  "forwardPorts": [4000, 8080, 19006],
+  "portsAttributes": {
+    "4000": {
+      "label": "Backend API",
+      "onAutoForward": "notify"
+    },
+    "8080": {
+      "label": "Expo Web (Metro)",
+      "onAutoForward": "openBrowser"
+    },
+    "19006": {
+      "label": "Expo Web",
+      "onAutoForward": "openBrowser"
+    }
+  }
+}
