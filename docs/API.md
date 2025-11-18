@@ -6,6 +6,27 @@ Base URL: `http://localhost:4000/api`
 
 Currently, no authentication is required. All endpoints are publicly accessible.
 
+## Rate Limiting
+
+To prevent abuse, the API implements rate limiting:
+
+- **General API endpoints**: 100 requests per 15 minutes per IP
+- **Write operations** (POST/DELETE): 20 requests per 15 minutes per IP
+- **Sensitive operations** (refresh holidays): 10 requests per hour per IP
+
+Rate limit information is returned in response headers:
+- `RateLimit-Limit`: Maximum requests allowed
+- `RateLimit-Remaining`: Requests remaining in current window
+- `RateLimit-Reset`: Time when the rate limit resets (Unix timestamp)
+
+When rate limit is exceeded, the API returns:
+```json
+{
+  "error": "Too many requests from this IP, please try again later."
+}
+```
+HTTP Status: `429 Too Many Requests`
+
 ## Endpoints
 
 ### Health Check

@@ -255,6 +255,26 @@ This helps identify staff who extend holidays to create long weekends.
 - [ ] Multi-language support
 - [ ] Dark mode theme
 
+## 🔒 Security Features
+
+LeaveSync implements several security measures:
+
+- **Rate Limiting**: Prevents API abuse with configurable limits
+  - 100 requests/15min for read operations
+  - 20 requests/15min for write operations
+  - 10 requests/hour for sensitive operations
+- **Parameterized Queries**: Prevents SQL injection attacks
+- **CORS Configuration**: Controls cross-origin access
+- **Input Validation**: Validates all user inputs
+- **Environment Variables**: Sensitive data stored securely
+
+**Future Security Enhancements:**
+- JWT authentication
+- Password hashing (bcrypt)
+- HTTPS enforcement
+- XSS protection
+- CSRF tokens
+
 ## ⚙️ Environment Variables
 
 ### Backend (.env)
