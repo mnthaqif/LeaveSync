@@ -1,21 +1,24 @@
-FROM node:18-alpine
-
+# Build stage
+FROM node:18-alpine AS build
 WORKDIR /app
 
-# Copy package files
 COPY package*.json ./
+RUN npm ci
 
-# Install dependencies
-RUN npm ci --only=production
-
-# Copy source code
 COPY . .
-
-# Build TypeScript
 RUN npm run build
 
-# Expose port
-EXPOSE 4000
+# Runtime stage
+FROM node:18-alpine AS runtime
+WORKDIR /app
 
-# Start server
+# Copy only production node_modules
+COPY --from=build /app/package*.json ./
+COPY --from=build /app/node_modules ./node_modules
+RUN npm prune --omit=dev
+
+# Copy compiled output
+COPY --from=build /app/dist ./dist
+
+EXPOSE 4000
 CMD ["node", "dist/server.js"]
