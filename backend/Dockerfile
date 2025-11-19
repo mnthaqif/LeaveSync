@@ -1,29 +1,38 @@
 # Build stage
-FROM node:18-alpine AS build
+FROM node:20-alpine AS build
 WORKDIR /app
 
-# Copy lockfiles first for better cache
-COPY package*.json ./
-# Install all deps (dev + prod) needed to build TypeScript
+# Copy root manifest + lockfile (monorepo)
+COPY package.json package-lock.json ./
+# Copy backend workspace manifest so npm knows about it before install
+COPY backend/package.json backend/package.json
+
+# Install deps (all workspaces). If you want ONLY backend deps, you can do:
+# RUN npm ci --workspace backend --include-workspace-root=false
 RUN npm ci
 
-# Copy source and build
-COPY . .
-RUN npm run build
+# Copy backend source
+COPY backend/ backend/
+
+# Build backend (workspace script)
+RUN npm run build --workspace backend
 
 # Runtime stage
-FROM node:18-alpine AS runtime
+FROM node:20-alpine AS runtime
 WORKDIR /app
 
-# Copy package files
-COPY --from=build /app/package*.json ./
+# Copy root manifests (optional, useful for introspection)
+COPY --from=build /app/package.json /app/package-lock.json ./
+# Copy backend package manifest
+COPY --from=build /app/backend/package.json backend/package.json
 
-# Bring over node_modules from build and remove dev deps
+# Copy node_modules (only backend's slice)
+# Simplest: copy all then prune dev deps
 COPY --from=build /app/node_modules ./node_modules
 RUN npm prune --omit=dev
 
-# Copy only the compiled output
-COPY --from=build /app/dist ./dist
+# Copy compiled backend output
+COPY --from=build /app/backend/dist backend/dist
 
 EXPOSE 4000
-CMD ["node", "dist/server.js"]
+CMD ["node", "backend/dist/server.js"]
