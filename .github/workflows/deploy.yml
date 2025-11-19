@@ -21,7 +21,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
           cache: 'npm'
 
       - name: Install all workspace dependencies
@@ -40,13 +40,15 @@ jobs:
         env:
           EXPO_PUBLIC_API_URL: ${{ secrets.FRONTEND_BACKEND_URL }}
 
-      - name: Build Expo Web (workspace script with proper public URL)
+      - name: Build Expo Web (workspace script)
         run: |
-          # Adjust the script instead of calling expo directly.
-          # Option 1: invoke the workspace script
-          npm --workspace frontend run build:web -- --public-url "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/"
-        env:
-          EXPO_PUBLIC_API_URL: ${{ secrets.FRONTEND_BACKEND_URL }}
+          npm --workspace frontend run build:web
+
+      - name: Inject base href for GitHub Pages project path
+        run: |
+          INDEX="frontend/web-build/index.html"
+          # Insert <base href="/LeaveSync/"> right after the opening <head> tag
+          sed -i '0,/<head>/s/<head>/<head><base href="\/LeaveSync\/">/' "$INDEX"
 
       - name: Add 404.html for SPA routing
         run: cp frontend/web-build/index.html frontend/web-build/404.html
