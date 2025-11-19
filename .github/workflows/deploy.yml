@@ -40,12 +40,13 @@ jobs:
         env:
           EXPO_PUBLIC_API_URL: ${{ secrets.FRONTEND_BACKEND_URL }}
 
-        - name: Build Expo Web (direct npx)
-          run: |
-            cd frontend
-            npx expo export --platform web --output-dir web-build --public-url "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/"
-          env:
-            EXPO_PUBLIC_API_URL: ${{ secrets.FRONTEND_BACKEND_URL }}
+      - name: Build Expo Web (workspace script with proper public URL)
+        run: |
+          # Adjust the script instead of calling expo directly.
+          # Option 1: invoke the workspace script
+          npm --workspace frontend run build:web -- --public-url "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/"
+        env:
+          EXPO_PUBLIC_API_URL: ${{ secrets.FRONTEND_BACKEND_URL }}
 
       - name: Add 404.html for SPA routing
         run: cp frontend/web-build/index.html frontend/web-build/404.html
