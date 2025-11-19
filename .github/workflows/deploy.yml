@@ -47,7 +47,6 @@ jobs:
       - name: Inject base href for GitHub Pages project path
         run: |
           INDEX="frontend/web-build/index.html"
-          # Insert <base href="/LeaveSync/"> right after the opening <head> tag
           sed -i '0,/<head>/s/<head>/<head><base href="\/LeaveSync\/">/' "$INDEX"
 
       - name: Add 404.html for SPA routing
