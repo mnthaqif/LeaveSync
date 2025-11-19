@@ -1,30 +1,36 @@
-# ...
-jobs:
-  build-backend:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+# Multi-stage build for the backend workspace
 
-      # (If you generate a lockfile or do Node tasks before Docker, keep setup-node here)
+FROM node:20-alpine AS build
+WORKDIR /app
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+# Copy root manifest & lockfile (monorepo) plus backend workspace package.json
+COPY package.json package-lock.json ./
+COPY backend/package.json backend/package.json
 
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+# Install only backend workspace deps (skip frontend)
+RUN npm ci --workspace backend --include-workspace-root=false
 
-      - name: Build and push backend image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: backend/Dockerfile
-          push: true
-          tags: |
-            ghcr.io/${{ github.repository_owner }}/leavesync-backend:latest
-            ghcr.io/${{ github.repository_owner }}/leavesync-backend:${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+# Copy backend source
+COPY backend/ backend/
+
+# Build TypeScript (workspace script)
+RUN npm run build --workspace backend
+
+# Runtime stage
+FROM node:20-alpine AS runtime
+WORKDIR /app
+
+# Copy backend package manifest (optional root manifests if you want)
+COPY --from=build /app/backend/package.json backend/package.json
+
+# Copy only the backend node_modules (we installed only backend deps above)
+COPY --from=build /app/node_modules ./node_modules
+
+# Remove any dev deps
+RUN npm prune --omit=dev
+
+# Copy compiled output
+COPY --from=build /app/backend/dist backend/dist
+
+EXPOSE 4000
+CMD ["node", "backend/dist/server.js"]
