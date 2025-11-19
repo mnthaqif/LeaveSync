@@ -24,16 +24,12 @@ jobs:
           node-version: '18'
           cache: 'npm'
 
-      - name: Install dependencies
-        run: |
-          npm install
-          cd frontend
-          npm install
+      - name: Install all workspace dependencies
+        run: npm install
 
       - name: Create expo config with API URL
         run: |
-          cd frontend
-          cat > app.config.js << 'EOF'
+          cat > frontend/app.config.js << 'EOF'
           export default {
             ...require('./app.json').expo,
             extra: {
@@ -44,16 +40,15 @@ jobs:
         env:
           EXPO_PUBLIC_API_URL: ${{ secrets.FRONTEND_BACKEND_URL }}
 
-      - name: Build Expo Web (with public URL for project pages)
-        run: |
-          cd frontend
-          expo export --platform web --output-dir web-build --public-url "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/"
-        env:
-          EXPO_PUBLIC_API_URL: ${{ secrets.FRONTEND_BACKEND_URL }}
+        - name: Build Expo Web (direct npx)
+          run: |
+            cd frontend
+            npx expo export --platform web --output-dir web-build --public-url "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/"
+          env:
+            EXPO_PUBLIC_API_URL: ${{ secrets.FRONTEND_BACKEND_URL }}
 
       - name: Add 404.html for SPA routing
-        run: |
-          cp frontend/web-build/index.html frontend/web-build/404.html
+        run: cp frontend/web-build/index.html frontend/web-build/404.html
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
@@ -61,8 +56,35 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: './frontend/web-build'
+          path: 'frontend/web-build'
 
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+  build-backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push backend image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: backend/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/leavesync-backend:latest
+            ghcr.io/${{ github.repository_owner }}/leavesync-backend:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
