@@ -15,6 +15,9 @@ permissions:
 jobs:
   deploy-frontend:
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
 
@@ -41,10 +44,20 @@ jobs:
           EXPO_PUBLIC_API_URL: ${{ secrets.FRONTEND_BACKEND_URL }}
 
       - name: Build Expo Web (workspace script)
-        run: |
-          npm --workspace frontend run build:web
+        run: npm --workspace frontend run build:web
 
-      - name: Inject base href for GitHub Pages project path
+      # Rewrite absolute /_expo paths in generated HTML/JS/CSS to relative _expo
+      - name: Rewrite absolute asset paths
+        run: |
+          set -e
+          TARGET_DIR="frontend/web-build"
+          FILES=$(grep -rl '/_expo' "$TARGET_DIR" || true)
+          for f in $FILES; do
+            # Replace "/_expo with _expo (double and single quoted forms)
+            sed -i -E 's|"\/_expo|"_expo|g; s|'\''\/_expo|'\''_expo|g' "$f"
+          done
+
+      - name: Inject base href for project path
         run: |
           INDEX="frontend/web-build/index.html"
           sed -i '0,/<head>/s/<head>/<head><base href="\/LeaveSync\/">/' "$INDEX"
@@ -63,6 +76,9 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+      - name: Show deployed URL
+        run: echo "Deployed to: ${{ steps.deployment.outputs.page_url }}"
 
   build-backend:
     runs-on: ubuntu-latest
