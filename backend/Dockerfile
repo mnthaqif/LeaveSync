@@ -3,33 +3,25 @@
 FROM node:20-alpine AS build
 WORKDIR /app
 
-# Copy root manifest & lockfile (monorepo) plus backend workspace package.json
+# Copy root manifest & lockfile plus backend workspace manifest
 COPY package.json package-lock.json ./
 COPY backend/package.json backend/package.json
 
 # Install only backend workspace deps (skip frontend)
 RUN npm ci --workspace backend --include-workspace-root=false
 
-# Copy backend source
+# Copy backend source and build TypeScript
 COPY backend/ backend/
-
-# Build TypeScript (workspace script)
 RUN npm run build --workspace backend
 
 # Runtime stage
 FROM node:20-alpine AS runtime
 WORKDIR /app
 
-# Copy backend package manifest (optional root manifests if you want)
-COPY --from=build /app/backend/package.json backend/package.json
-
-# Copy only the backend node_modules (we installed only backend deps above)
+# Bring only the backend deps and compiled output
 COPY --from=build /app/node_modules ./node_modules
-
-# Remove any dev deps
 RUN npm prune --omit=dev
-
-# Copy compiled output
+COPY --from=build /app/backend/package.json backend/package.json
 COPY --from=build /app/backend/dist backend/dist
 
 EXPOSE 4000
